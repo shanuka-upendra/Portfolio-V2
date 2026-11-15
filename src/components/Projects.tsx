@@ -1,151 +1,234 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { ExternalLink, Globe, Newspaper, Radar, Shield, Smartphone, Swords } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { motion, useScroll, useTransform, type MotionValue } from 'framer-motion';
+import { ArrowUpRight } from 'lucide-react';
+import { type ProjectCaseStudy, type ProjectCategory } from '../data/projects';
+import { useProjects, trackProjectView } from '../hooks/useProjects';
+import { ProjectMockup } from './ProjectMockup';
+import { CaseStudyModal } from './CaseStudyModal';
 
-interface Project {
-    title: string;
-    description: string;
-    tech: string[];
-    icon: React.ReactNode;
-    github: string;
-    demo: string;
-}
-
-const projects: Project[] = [
-    {
-        title: 'SecureLaw',
-        description: 'Full-stack legal-tech platform built as part of the PrimeSprint team sprint, with a dedicated frontend and backend architecture for secure case and document handling.',
-        tech: ['Java', 'Spring Boot', 'Angular', 'TypeScript', 'PostgreSQL', 'JWT'],
-        icon: <Shield className="w-6 h-6 text-emerald-400" />,
-        github: 'https://github.com/iCET-Computer-Engineering-Technology/PrimeSprint-T1-SecureLaw-Frontend',
-        demo: 'https://securelaw.vercel.app/',
-    },
-    {
-        title: 'Skill Duel',
-        description: '1v1 real-time quiz battle platform featuring live trivia matches, auto-scoring, winner detection, duel inbox, answer breakdown and a global leaderboard with rank progression.',
-        tech: ['Python', 'Django', 'PostgreSQL', 'Railway', 'OpenTrivia DB API'],
-        icon: <Swords className="w-6 h-6 text-emerald-400" />,
-        github: 'https://github.com/shanuka-upendra/Skill-Duel-Django',
-        demo: 'https://skill-duel-django-production.up.railway.app/',
-    },
-    {
-        title: 'Folio',
-        description: 'A modern blogging platform built with the team at SYIGEN, helping creators publish, monetize, and manage content while giving readers a fast, seamless experience. Supports five role-based access levels with tailored permissions, from Normal Users to Admins.',
-        tech: ['Next.js', 'Supabase', 'PostgreSQL', 'Stripe', 'Tailwind CSS', 'Vercel'],
-        icon: <Newspaper className="w-6 h-6 text-emerald-400" />,
-        github: 'https://github.com/SYIGEN-TRAINING/blog-next',
-        demo: 'https://demo.com',
-    },
-    {
-        title: 'Phonecare POS',
-        description: 'A desktop point-of-sale application built with the team at SYIGEN for a mobile phone shop and repair business, covering project setup, authentication, dashboards, and user management as part of a the team.',
-        tech: ['React', 'TypeScript', 'Rust', 'Tauri', 'SQLite'],
-        icon: <Smartphone className="w-6 h-6 text-emerald-400" />,
-        github: 'https://github.com/SYIGEN-TRAINING/pos-team-b',
-        demo: 'https://demo.com',
-    },
-    {
-        title: 'Defence System',
-        description: 'Java-based Defense Management System simulation demonstrating coordinated multi-unit command through real-time communication principles, built as an academic showcase of OOP and the Observer Design Pattern.',
-        tech: ['Java', 'OOP', 'Java Swing', 'Observer Pattern'],
-        icon: <Radar className="w-6 h-6 text-emerald-400" />,
-        github: 'https://github.com/shanuka-upendra/DefenceSystem-SMD',
-        demo: 'https://demo.com',
-    },
-    {
-        title: 'Portfolio Website',
-        description: 'Modern developer portfolio engineered with sleek glassmorphism dynamics, particle system backdrops, micro-animations, and fast performance metrics.',
-        tech: ['React', 'TypeScript', 'Tailwind CSS', 'Framer Motion'],
-        icon: <Globe className="w-6 h-6 text-emerald-400" />,
-        github: 'https://github.com/shanuka-upendra/SMD-Portfolio',
-        demo: 'https://demo.com',
-    }
+const CATEGORIES: ('All' | ProjectCategory)[] = [
+  'All',
+  'Full-Stack',
+  'Desktop & Systems',
+  'Frontend',
 ];
 
-const Github: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
-    <svg
-        className={className}
-        fill="currentColor"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
+const MARQUEE_ITEMS = [
+  'CLEAN ARCHITECTURE',
+  'FULL-STACK SYSTEMS',
+  'UI/UX ENGINEERING',
+  'TYPE-SAFE CODE',
+  'ACCESSIBILITY',
+  'SCALABLE APIS',
+];
+
+const CARD_TONES = [
+  'from-[#1c2b26] via-[#15221e] to-[#0f1816]',
+  'from-[#141f1e] via-[#101919] to-[#0b1212]',
+  'from-[#192824] via-[#13201d] to-[#0d1614]',
+  'from-[#121d1c] via-[#0e1717] to-[#0a1010]',
+];
+
+interface StackedCardProps {
+  project: ProjectCaseStudy;
+  idx: number;
+  total: number;
+  progress: MotionValue<number>;
+  onOpen: (project: ProjectCaseStudy) => void;
+}
+
+const StackedProjectCard: React.FC<StackedCardProps> = ({
+  project,
+  idx,
+  total,
+  progress,
+  onOpen,
+}) => {
+  const targetScale = 1 - (total - idx - 1) * 0.035;
+  const rangeStart = idx / Math.max(total, 1);
+  const scale = useTransform(progress, [rangeStart, 1], [1, targetScale]);
+  const tone = CARD_TONES[idx % CARD_TONES.length];
+
+  return (
+    <div
+      className="md:sticky flex items-start justify-center"
+      style={{ top: `${88 + idx * 18}px`, zIndex: idx + 1 }}
     >
-        <path
-            fillRule="evenodd"
-            clipRule="evenodd"
-            d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
-        />
-    </svg>
-);
+      <motion.article
+        style={{ scale }}
+        className={`group relative w-full rounded-3xl bg-gradient-to-br ${tone} border border-white/12 hover:border-emerald-400/40 transition-colors duration-300 overflow-hidden shadow-[0_-24px_60px_-15px_rgba(0,0,0,0.75)] origin-top`}
+      >
+        {/* Subtle matte grain texture */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 card-grain" />
+
+        <div className="relative z-10 grid lg:grid-cols-12 gap-8 items-center">
+          {/* Left Column: Ultra-Clean Editorial Content */}
+          <div className="lg:col-span-6 p-8 sm:p-12 space-y-5">
+            <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-emerald-300/90">
+              {project.title} • {project.category}
+            </div>
+
+            <h3 className="text-2xl sm:text-4xl font-bold text-white leading-[1.15] tracking-tight">
+              {project.headline}
+            </h3>
+
+            <p className="text-slate-300/85 text-sm sm:text-base leading-relaxed max-w-md">
+              {project.summary}
+            </p>
+
+            <div className="pt-3">
+              <button
+                type="button"
+                onClick={() => onOpen(project)}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-slate-950 font-semibold text-xs sm:text-sm hover:bg-emerald-300 transition-colors shadow-md cursor-pointer"
+              >
+                View Case Study
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: Clean Cropped Device Preview */}
+          <div className="lg:col-span-6 pt-2 lg:pt-10 pl-6 lg:pl-0 self-end flex items-end justify-end">
+            <div className="w-full translate-x-2 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+              <ProjectMockup
+                slug={project.slug}
+                deviceType={project.deviceType}
+                variant="card"
+                imageSrc={project.heroImage}
+                imageAlt={`${project.title} UI preview`}
+              />
+            </div>
+          </div>
+        </div>
+      </motion.article>
+    </div>
+  );
+};
 
 export const Projects: React.FC = () => {
-    return (
-        <section id="projects" className="py-24 relative z-10 border-t border-white/5">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  const { projects } = useProjects();
+  const [selectedCategory, setSelectedCategory] = useState<'All' | ProjectCategory>('All');
+  const [activeSlug, setActiveSlug] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('project');
+  });
+  const stackContainerRef = useRef<HTMLDivElement>(null);
 
-                <div className="text-center max-w-3xl mx-auto mb-16">
-                    <h2 className="text-xs font-mono uppercase tracking-widest text-emerald-400 mb-2">05. Case Studies</h2>
-                    <p className="text-3xl sm:text-4xl font-bold text-white">Featured Projects</p>
-                </div>
+  const { scrollYProgress } = useScroll({
+    target: stackContainerRef,
+    offset: ['start start', 'end end'],
+  });
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {projects.map((project, idx) => (
-                        <motion.div
-                            key={project.title}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.1 }}
-                            viewport={{ once: true }}
-                            className="glass-card rounded-2xl overflow-hidden flex flex-col justify-between group"
-                        >
-                            <div className="p-6 space-y-4">
-                                {/* Visual Header Placeholder */}
-                                <div className="h-44 rounded-xl bg-gradient-to-br from-slate-900 via-emerald-950/30 to-slate-900 border border-white/5 flex items-center justify-center group-hover:border-emerald-500/30 transition-colors">
-                                    <div className="p-4 rounded-2xl bg-slate-950/80 border border-white/10 group-hover:scale-110 transition-transform">
-                                        {project.icon}
-                                    </div>
-                                </div>
+  const activeProject = activeSlug
+    ? projects.find((p) => p.slug === activeSlug) ?? null
+    : null;
 
-                                <h3 className="text-xl font-bold text-white group-hover:text-emerald-400 transition-colors">
-                                    {project.title}
-                                </h3>
+  const openCaseStudy = (project: ProjectCaseStudy) => {
+    setActiveSlug(project.slug);
+    trackProjectView(project.slug);
+    const url = new URL(window.location.href);
+    url.searchParams.set('project', project.slug);
+    window.history.replaceState({}, '', url.toString());
+  };
 
-                                <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
-                                    {project.description}
-                                </p>
+  const closeCaseStudy = () => {
+    setActiveSlug(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('project');
+    window.history.replaceState({}, '', url.toString());
+  };
 
-                                <div className="flex flex-wrap gap-1.5 pt-2">
-                                    {project.tech.map((t) => (
-                                        <span key={t} className="px-2.5 py-1 rounded-md bg-white/[0.04] text-[11px] font-mono text-emerald-300">
-                                            {t}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
+  const filteredProjects =
+    selectedCategory === 'All'
+      ? projects
+      : projects.filter((p) => p.category === selectedCategory);
 
-                            {/* Action Footer */}
-                            <div className="p-6 pt-0 flex items-center gap-3 border-t border-white/5 mt-4">
-                                <a
-                                    href={project.github}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-lg glass-card text-xs font-mono text-slate-300 hover:text-white hover:bg-white/10 transition-all"
-                                >
-                                    <Github className="w-3.5 h-3.5" /> Repository
-                                </a>
-                                <a
-                                    href={project.demo}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-emerald-950/80 border border-emerald-500/40 text-xs font-mono text-emerald-300 hover:bg-emerald-900/80 transition-all"
-                                >
-                                    <ExternalLink className="w-3.5 h-3.5" /> Live Demo
-                                </a>
-                            </div>
-                        </motion.div>
-                    ))}
-                </div>
+  return (
+    <section id="projects" className="py-24 relative z-10 border-t border-white/5 overflow-x-clip">
+      {/* Ambient Emerald Spotlight */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute top-40 -left-40 w-[520px] h-[520px] rounded-full bg-emerald-500/10 blur-[130px]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-40 -right-40 w-[460px] h-[460px] rounded-full bg-teal-500/10 blur-[130px]"
+      />
 
-            </div>
-        </section>
-    );
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        {/* Section Header */}
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <h2 className="text-xs font-mono uppercase tracking-[0.22em] text-emerald-400 mb-2">
+            05. Curated Work
+          </h2>
+          <p className="text-3xl sm:text-5xl font-bold text-white tracking-tight">
+            Featured{' '}
+            <span className="font-editorial italic font-normal text-emerald-300">
+              Case Studies
+            </span>
+          </p>
+          <p className="mt-3 text-sm sm:text-base text-slate-400">
+            Scroll through the stacked showcase cards or open any case study for full architecture
+            and UI docs.
+          </p>
+        </div>
+
+        {/* Category Filter Pills */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-14">
+          {CATEGORIES.map((category) => (
+            <button
+              key={category}
+              type="button"
+              onClick={() => setSelectedCategory(category)}
+              className={`px-4 py-1.5 rounded-full text-xs font-mono transition-all cursor-pointer ${
+                selectedCategory === category
+                  ? 'bg-white text-slate-950 font-semibold shadow-md'
+                  : 'bg-white/[0.04] text-slate-300 hover:bg-white/10 border border-white/10'
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+
+        {/* Sticky Stacking Cards Container */}
+        <div ref={stackContainerRef} className="relative space-y-10 pb-8">
+          {filteredProjects.map((project, idx) => (
+            <StackedProjectCard
+              key={project.slug}
+              project={project}
+              idx={idx}
+              total={filteredProjects.length}
+              progress={scrollYProgress}
+              onOpen={openCaseStudy}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Personalfolio-Inspired Angled Marquee Divider */}
+      <div className="mt-20 -mx-4 rotate-[-1.2deg] bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400 text-slate-950 py-3 border-y border-emerald-200/40 shadow-lg overflow-hidden">
+        <div className="animate-marquee">
+          {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
+            <span
+              key={`${item}-${i}`}
+              className="inline-flex items-center gap-4 px-5 text-xs sm:text-sm font-mono font-bold tracking-widest uppercase whitespace-nowrap"
+            >
+              <span>✦</span>
+              <span>{item}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Detailed Case Study Reader Modal */}
+      <CaseStudyModal
+        project={activeProject}
+        onClose={closeCaseStudy}
+        onSelectProject={openCaseStudy}
+        allProjects={projects}
+      />
+    </section>
+  );
 };
