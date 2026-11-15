@@ -12,9 +12,11 @@ export const useTypewriter = (words: string[], typingSpeed = 100, deletingSpeed 
         }
 
         if (subIndex === 0 && reverse) {
-            setReverse(false);
-            setIndex((prev) => (prev + 1) % words.length);
-            return;
+            const timeout = setTimeout(() => {
+                setReverse(false);
+                setIndex((prev) => (prev + 1) % words.length);
+            }, deletingSpeed);
+            return () => clearTimeout(timeout);
         }
 
         const timeout = setTimeout(() => {
